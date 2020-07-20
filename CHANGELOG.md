@@ -1,4 +1,8 @@
-v5.4.0
+v5.6.0
+----------
+ * 5.6.0 Release Candidate
+
+v5.4.0 
 ----------
  * touch README for 5.4 release
 
