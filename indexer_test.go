@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/olivere/elastic"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const elasticURL = "http://localhost:9200"
@@ -22,21 +24,21 @@ const indexName = "rp_elastic_test"
 
 func setup(t *testing.T) (*sql.DB, *elastic.Client) {
 	testDB, err := ioutil.ReadFile("testdb.sql")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	db, err := sql.Open("postgres", "postgres://temba:temba@localhost:5432/elastic_test?sslmode=disable")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	_, err = db.Exec(string(testDB))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	client, err := elastic.NewClient(elastic.SetURL(elasticURL), elastic.SetTraceLog(log.New(os.Stdout, "", log.LstdFlags)))
-	assert.NoError(t, err)
+	client, err := elastic.NewClient(elastic.SetURL(elasticURL), elastic.SetTraceLog(log.New(os.Stdout, "", log.LstdFlags)), elastic.SetSniff(false))
+	require.NoError(t, err)
 
 	existing := FindPhysicalIndexes(elasticURL, indexName)
 	for _, idx := range existing {
 		_, err = client.DeleteIndex(idx).Do(context.Background())
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	logrus.SetLevel(logrus.DebugLevel)
@@ -93,10 +95,20 @@ func TestIndexing(t *testing.T) {
 	assertQuery(t, client, physicalName, elastic.NewMatchQuery("is_blocked", "true"), []int64{3})
 	assertQuery(t, client, physicalName, elastic.NewMatchQuery("is_stopped", "true"), []int64{2})
 
+	assertQuery(t, client, physicalName, elastic.NewMatchQuery("status", "B"), []int64{3})
+	assertQuery(t, client, physicalName, elastic.NewMatchQuery("status", "S"), []int64{2})
+
 	assertQuery(t, client, physicalName, elastic.NewMatchQuery("org_id", "1"), []int64{1, 2, 3, 4})
 
 	// created_on range query
 	assertQuery(t, client, physicalName, elastic.NewRangeQuery("created_on").Gt("2017-01-01"), []int64{1, 6, 8})
+
+	// last_seen_on range query
+	assertQuery(t, client, physicalName, elastic.NewRangeQuery("last_seen_on").Lt("2019-01-01"), []int64{3, 4})
+
+	// last_seen_on is set / not set queries
+	assertQuery(t, client, physicalName, elastic.NewExistsQuery("last_seen_on"), []int64{1, 2, 3, 4, 5, 6})
+	assertQuery(t, client, physicalName, elastic.NewBoolQuery().MustNot(elastic.NewExistsQuery("last_seen_on")), []int64{7, 8, 9})
 
 	// urn query
 	query := elastic.NewNestedQuery("urns", elastic.NewBoolQuery().Must(
@@ -286,4 +298,87 @@ func TestIndexing(t *testing.T) {
 	// 3 is no longer in our group
 	assertQuery(t, client, indexName, elastic.NewMatchQuery("groups", "529bac39-550a-4d6f-817c-1833f3449007"), []int64{1})
 
+}
+func TestRetryServer(t *testing.T) {
+	responseCounter := 0
+	responses := []func(w http.ResponseWriter, r *http.Request){
+		func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Length", "5")
+		},
+		func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Length", "1")
+		},
+		func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Length", "1")
+		},
+		func(w http.ResponseWriter, r *http.Request) {
+			resp := `{
+				"took": 1,
+				"timed_out": false,
+				"_shards": {
+				  "total": 2,
+				  "successful": 2,
+				  "skipped": 0,
+				  "failed": 0
+				},
+				"hits": {
+				  "total": 1,
+				  "max_score": null,
+				  "hits": [
+					{
+					  "_index": "rp_elastic_test_2020_08_14_1",
+					  "_type": "_doc",
+					  "_id": "1",
+					  "_score": null,
+					  "_routing": "1",
+					  "_source": {
+						"id": 1,
+						"org_id": 1,
+						"uuid": "c7a2dd87-a80e-420b-8431-ca48d422e924",
+						"name": null,
+						"language": "eng",
+						"is_stopped": false,
+						"is_blocked": false,
+						"is_active": true,
+						"created_on": "2017-11-10T16:11:59.890662-05:00",
+						"modified_on": "2017-11-10T16:11:59.890662-05:00",
+						"last_seen_on": "2020-08-04T21:11:00-04:00",
+						"modified_on_mu": 1.510348319890662e15,
+						"urns": [
+						  {
+							"scheme": "tel",
+							"path": "+12067791111"
+						  },
+						  {
+							"scheme": "tel",
+							"path": "+12067792222"
+						  }
+						],
+						"fields": [
+						  {
+							"text": "the rock",
+							"field": "17103bb1-1b48-4b70-92f7-1f6b73bd3488"
+						  }
+						],
+						"groups": [
+						  "4ea0f313-2f62-4e57-bdf0-232b5191dd57",
+						  "529bac39-550a-4d6f-817c-1833f3449007"
+						]
+					  },
+					  "sort": [1]
+					}
+				  ]
+				}
+			  }`
+
+			w.Write([]byte(resp))
+		},
+	}
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		responses[responseCounter](w, r)
+		responseCounter++
+	}))
+	defer ts.Close()
+	FindPhysicalIndexes(ts.URL, "rp_elastic_test")
+	require.Equal(t, responseCounter, 4)
 }
