@@ -11,10 +11,49 @@ import (
 	"strings"
 	"time"
 
+	"github.com/nyaruka/gocommon/httpx"
 	log "github.com/sirupsen/logrus"
 )
 
 var batchSize = 500
+
+var retryConfig *httpx.RetryConfig
+
+func init() {
+	//setup httpx retry configuration
+	var retrycount = 5
+	var initialBackoff = 1 * time.Second
+	retryConfig = ElasticRetries(initialBackoff, retrycount)
+}
+
+func ElasticRetries(initialBackoff time.Duration, count int) *httpx.RetryConfig {
+	backoffs := make([]time.Duration, count)
+	backoffs[0] = initialBackoff
+	for i := 1; i < count; i++ {
+		backoffs[i] = backoffs[i-1] * 2
+	}
+	return &httpx.RetryConfig{Backoffs: backoffs, ShouldRetry: ShouldRetry}
+}
+func ShouldRetry(request *http.Request, response *http.Response, withDelay time.Duration) bool {
+
+	// 429 Too Many Requests is recoverable. Sometimes the server puts
+	// a Retry-After response header to indicate when the server is
+	// available to start processing request from client.
+	if response.StatusCode == http.StatusTooManyRequests {
+		return true
+	}
+
+	// check for unexpected EOF
+	bodyBytes, err := ioutil.ReadAll(response.Body)
+	response.Body.Close()
+	if err != nil {
+		log.WithError(err).Error("error reading ES response, retrying")
+		return true
+	}
+
+	response.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+	return false
+}
 
 // CreateNewIndex creates a new index for the passed in alias.
 //
@@ -132,7 +171,7 @@ func CleanupIndexes(url string, alias string) error {
 func MakeJSONRequest(method string, url string, body string, jsonStruct interface{}) (*http.Response, error) {
 	req, _ := http.NewRequest(method, url, bytes.NewReader([]byte(body)))
 	req.Header.Add("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpx.Do(http.DefaultClient, req, retryConfig, nil)
 
 	l := log.WithField("url", url).WithField("method", method).WithField("request", body)
 	if err != nil {
@@ -344,7 +383,7 @@ func MapIndexAlias(elasticURL string, alias string, newIndex string) error {
 const contactQuery = `
 SELECT org_id, id, modified_on, is_active, row_to_json(t) FROM (
   SELECT
-   id, org_id, uuid, name, language, is_stopped, is_blocked, is_active, created_on, modified_on,
+   id, org_id, uuid, name, language, status, status = 'S' AS is_stopped, status = 'B' AS is_blocked, is_active, created_on, modified_on, last_seen_on,
    EXTRACT(EPOCH FROM modified_on) * 1000000 as modified_on_mu,
    (
      SELECT array_to_json(array_agg(row_to_json(u)))
@@ -552,6 +591,9 @@ const indexSettings = `
 				"uuid": {
 					"type": "keyword"
 				},
+				"status": {
+					"type": "keyword"
+				},
 				"language": {
 					"type": "keyword",
 					"normalizer": "lowercase"
@@ -564,6 +606,9 @@ const indexSettings = `
 				},
 				"modified_on_mu": {
 					"type": "long"
+				},
+				"last_seen_on": {
+					"type": "date"
 				},
 				"name": {
 					"type": "text",
