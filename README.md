@@ -1,4 +1,8 @@
-# RapidPro Indexer [![Build Status](https://github.com/nyaruka/rp-indexer/workflows/CI/badge.svg)](https://github.com/nyaruka/rp-indexer/actions?query=workflow%3ACI) [![codecov](https://codecov.io/gh/nyaruka/rp-indexer/branch/master/graph/badge.svg)](https://codecov.io/gh/nyaruka/rp-indexer) [![Go Report Card](https://goreportcard.com/badge/github.com/nyaruka/rp-indexer)](https://goreportcard.com/report/github.com/nyaruka/rp-indexer)
+# RapidPro Indexer 
+
+[![Build Status](https://github.com/nyaruka/rp-indexer/workflows/CI/badge.svg)](https://github.com/nyaruka/rp-indexer/actions?query=workflow%3ACI) 
+[![codecov](https://codecov.io/gh/nyaruka/rp-indexer/branch/main/graph/badge.svg)](https://codecov.io/gh/nyaruka/rp-indexer) 
+[![Go Report Card](https://goreportcard.com/badge/github.com/nyaruka/rp-indexer)](https://goreportcard.com/report/github.com/nyaruka/rp-indexer)
 
 Simple service for indexing RapidPro contacts into ElasticSearch.
 
@@ -45,19 +49,13 @@ Recommended settings for error reporting:
 
 # Development
 
-Install Indexer source in your workspace with:
-
-```
-go get github.com/nyaruka/rp-indexer
-```
-
-Build Indexer with:
+Once you've checked out the code, you can build Indexer with:
 
 ```
 go build github.com/nyaruka/rp-indexer/cmd/rp-indexer
 ```
 
-This will create a new executable in your current directory `rp-indexer`
+This will create a new executable in $GOPATH/bin called `rp-indexer`.
 
 To run the tests you need to create the test database:
 
@@ -68,7 +66,7 @@ $ createdb elastic_test
 To run all of the tests:
 
 ```
-go test github.com/nyaruka/rp-indexer/... -p=1
+go test ./... -p=1
 ```
 
 # Usage
