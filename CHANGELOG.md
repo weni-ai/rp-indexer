@@ -1,3 +1,16 @@
+v6.2.0
+----------
+ * add rp-indexer to .gitignore
+ * 6.2.0 RC
+
+v6.1.0
+----------
+ * Change ElasticSearch version to v7 (backwards incompatible change)
+
+v6.0.0
+----------
+ * Update README
+
 v5.7.2
 ----------
  * add status field to index for querying
