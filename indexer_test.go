@@ -92,13 +92,14 @@ func TestIndexing(t *testing.T) {
 	// test contact, not indexed
 	assertQuery(t, client, physicalName, elastic.NewMatchQuery("language", "fra"), []int64{})
 
-	assertQuery(t, client, physicalName, elastic.NewMatchQuery("is_blocked", "true"), []int64{3})
-	assertQuery(t, client, physicalName, elastic.NewMatchQuery("is_stopped", "true"), []int64{2})
-
 	assertQuery(t, client, physicalName, elastic.NewMatchQuery("status", "B"), []int64{3})
 	assertQuery(t, client, physicalName, elastic.NewMatchQuery("status", "S"), []int64{2})
 
 	assertQuery(t, client, physicalName, elastic.NewMatchQuery("org_id", "1"), []int64{1, 2, 3, 4})
+
+	assertQuery(t, client, physicalName, elastic.NewMatchQuery("tickets", 2), []int64{1})
+	assertQuery(t, client, physicalName, elastic.NewMatchQuery("tickets", 1), []int64{2, 3})
+	assertQuery(t, client, physicalName, elastic.NewRangeQuery("tickets").Gt(0), []int64{1, 2, 3})
 
 	// created_on range query
 	assertQuery(t, client, physicalName, elastic.NewRangeQuery("created_on").Gt("2017-01-01"), []int64{1, 6, 8})
@@ -202,12 +203,12 @@ func TestIndexing(t *testing.T) {
 	// phrase matches all
 	query = elastic.NewNestedQuery("fields", elastic.NewBoolQuery().Must(
 		elastic.NewMatchQuery("fields.field", "fcab2439-861c-4832-aa54-0c97f38f24ab"),
-		elastic.NewMatchPhraseQuery("fields.district", "King Côunty")))
+		elastic.NewMatchPhraseQuery("fields.district", "King-Côunty")))
 	assertQuery(t, client, physicalName, query, []int64{7})
 
 	query = elastic.NewNestedQuery("fields", elastic.NewBoolQuery().Must(
 		elastic.NewMatchQuery("fields.field", "fcab2439-861c-4832-aa54-0c97f38f24ab"),
-		elastic.NewMatchQuery("fields.district_keyword", "King Côunty")))
+		elastic.NewMatchQuery("fields.district_keyword", "King-Côunty")))
 	assertQuery(t, client, physicalName, query, []int64{7})
 
 	// ward query
@@ -337,8 +338,6 @@ func TestRetryServer(t *testing.T) {
 						"uuid": "c7a2dd87-a80e-420b-8431-ca48d422e924",
 						"name": null,
 						"language": "eng",
-						"is_stopped": false,
-						"is_blocked": false,
 						"is_active": true,
 						"created_on": "2017-11-10T16:11:59.890662-05:00",
 						"modified_on": "2017-11-10T16:11:59.890662-05:00",
