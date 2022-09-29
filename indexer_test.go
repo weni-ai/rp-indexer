@@ -26,7 +26,7 @@ func setup(t *testing.T) (*sql.DB, *elastic.Client) {
 	testDB, err := ioutil.ReadFile("testdb.sql")
 	require.NoError(t, err)
 
-	db, err := sql.Open("postgres", "postgres://temba:temba@localhost:5432/elastic_test?sslmode=disable")
+	db, err := sql.Open("postgres", "postgres://nyaruka:nyaruka@localhost:5432/elastic_test?sslmode=disable")
 	require.NoError(t, err)
 
 	_, err = db.Exec(string(testDB))
@@ -100,6 +100,9 @@ func TestIndexing(t *testing.T) {
 	assertQuery(t, client, physicalName, elastic.NewMatchQuery("tickets", 2), []int64{1})
 	assertQuery(t, client, physicalName, elastic.NewMatchQuery("tickets", 1), []int64{2, 3})
 	assertQuery(t, client, physicalName, elastic.NewRangeQuery("tickets").Gt(0), []int64{1, 2, 3})
+
+	assertQuery(t, client, physicalName, elastic.NewMatchQuery("flow", "6d3cf1eb-546e-4fb8-a5ca-69187648fbf6"), []int64{2, 3})
+	assertQuery(t, client, physicalName, elastic.NewMatchQuery("flow", "4eea8ff1-4fe2-4ce5-92a4-0870a499973a"), []int64{4})
 
 	// created_on range query
 	assertQuery(t, client, physicalName, elastic.NewRangeQuery("created_on").Gt("2017-01-01"), []int64{1, 6, 8})
