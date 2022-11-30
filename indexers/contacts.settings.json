@@ -79,6 +79,23 @@
                 "required": true
             },
             "properties": {
+                "uuid": {
+                    "type": "keyword"
+                },
+                "name": {
+                    "type": "text",
+                    "analyzer": "prefix",
+                    "search_analyzer": "name_search",
+                    "fields": {
+                        "keyword": {
+                            "type": "keyword",
+                            "normalizer": "lowercase"
+                        }
+                    }
+                },
+                "status": {
+                    "type": "keyword"
+                },
                 "fields": {
                     "type": "nested",
                     "properties": {
@@ -91,7 +108,8 @@
                         },
                         "number": {
                             "type": "scaled_float",
-                            "scaling_factor": 10000
+                            "scaling_factor": 10000,
+                            "ignore_malformed": true
                         },
                         "datetime": {
                             "type": "date"
@@ -141,14 +159,14 @@
                         }
                     }
                 },
-                "groups": {
+                "group_ids": {
                     "type": "keyword"
                 },
-                "uuid": {
-                    "type": "keyword"
+                "flow_id": {
+                    "type": "integer"
                 },
-                "status": {
-                    "type": "keyword"
+                "flow_history_ids": {
+                    "type": "integer"
                 },
                 "tickets": {
                     "type": "integer"
@@ -168,17 +186,6 @@
                 },
                 "last_seen_on": {
                     "type": "date"
-                },
-                "name": {
-                    "type": "text",
-                    "analyzer": "prefix",
-                    "search_analyzer": "name_search",
-                    "fields": {
-                        "keyword": {
-                            "type": "keyword",
-                            "normalizer": "lowercase"
-                        }
-                    }
                 }
             }
         }
