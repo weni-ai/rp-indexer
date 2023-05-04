@@ -186,7 +186,7 @@ var contactQueryTests = []struct {
 func TestContacts(t *testing.T) {
 	db, es := setup(t)
 
-	ix1 := indexers.NewContactIndexer(elasticURL, aliasName, 4)
+	ix1 := indexers.NewContactIndexer(elasticURL, aliasName, 2, 1, 4)
 	assert.Equal(t, "indexer_test", ix1.Name())
 
 	expectedIndexName := fmt.Sprintf("indexer_test_%s", time.Now().Format("2006_01_02"))
@@ -238,7 +238,7 @@ func TestContacts(t *testing.T) {
 	require.NoError(t, err)
 
 	// and simulate another indexer doing a parallel rebuild
-	ix2 := indexers.NewContactIndexer(elasticURL, aliasName, 4)
+	ix2 := indexers.NewContactIndexer(elasticURL, aliasName, 2, 1, 4)
 
 	indexName2, err := ix2.Index(db, true, false)
 	assert.NoError(t, err)
@@ -254,7 +254,7 @@ func TestContacts(t *testing.T) {
 	assertQuery(t, es, elastic.NewMatchQuery("name", "eric"), []int64{2})
 
 	// simulate another indexer doing a parallel rebuild with cleanup
-	ix3 := indexers.NewContactIndexer(elasticURL, aliasName, 4)
+	ix3 := indexers.NewContactIndexer(elasticURL, aliasName, 2, 1, 4)
 	indexName3, err := ix3.Index(db, true, true)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedIndexName+"_2", indexName3) // new index used

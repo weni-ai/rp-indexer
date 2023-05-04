@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"database/sql"
 	_ "embed"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -12,8 +11,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-//go:embed contacts.settings.json
-var contactsSettings json.RawMessage
+//go:embed contacts.index.json
+var contactsIndexDef []byte
 
 // ContactIndexer is an indexer for contacts
 type ContactIndexer struct {
@@ -23,9 +22,11 @@ type ContactIndexer struct {
 }
 
 // NewContactIndexer creates a new contact indexer
-func NewContactIndexer(elasticURL, name string, batchSize int) *ContactIndexer {
+func NewContactIndexer(elasticURL, name string, shards, replicas, batchSize int) *ContactIndexer {
+	def := newIndexDefinition(contactsIndexDef, shards, replicas)
+
 	return &ContactIndexer{
-		baseIndexer: newBaseIndexer(elasticURL, name),
+		baseIndexer: newBaseIndexer(elasticURL, name, def),
 		batchSize:   batchSize,
 	}
 }
@@ -47,7 +48,7 @@ func (i *ContactIndexer) Index(db *sql.DB, rebuild, cleanup bool) (string, error
 
 	// doesn't exist or we are rebuilding, create it
 	if physicalIndex == "" || rebuild {
-		physicalIndex, err = i.createNewIndex(contactsSettings)
+		physicalIndex, err = i.createNewIndex(i.definition)
 		if err != nil {
 			return "", errors.Wrap(err, "error creating new index")
 		}
