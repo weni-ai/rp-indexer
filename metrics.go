@@ -12,12 +12,12 @@ var summaryObjectives = map[float64]float64{
 	0.99: 0.001, // 99th percentile with a max. absolute error of 0.001.
 }
 
-var contactsInQueue = promauto.NewGaugeVec(
+var contactsProcessing = promauto.NewGaugeVec(
 	prometheus.GaugeOpts{
-		Name: "indexer_contacts_in_queue",
-		Help: "Number of contacts currently in the queue waiting to be indexed.",
+		Name: "indexer_contacts_processing",
+		Help: "Number of contacts created / deleted / conflited per batch",
 	},
-	[]string{"queue"},
+	[]string{"process"},
 )
 
 var dbResponseTimeSummary = promauto.NewSummaryVec(
@@ -38,8 +38,8 @@ var esIndexingTimeSummary = promauto.NewSummaryVec(
 	[]string{"index"},
 )
 
-func UpdateContactsInQueue(queueName string, count int) {
-	contactsInQueue.WithLabelValues(queueName).Set(float64(count))
+func UpdateContactsPerBatch(processName string, count int) {
+	contactsProcessing.WithLabelValues(processName).Set(float64(count))
 }
 
 func ObserveDBResponseTime(operation string, duration float64) {

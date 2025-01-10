@@ -216,7 +216,10 @@ func IndexBatch(elasticURL string, index string, batch string) (int, int, error)
 	response := indexResponse{}
 	indexURL := fmt.Sprintf("%s/%s/_bulk", elasticURL, index)
 
+	start := time.Now()
 	_, err := MakeJSONRequest(http.MethodPut, indexURL, batch, &response)
+	duration := time.Since(start).Seconds()
+	ObserveESIndexingTime("es_time", duration)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -244,6 +247,7 @@ func IndexBatch(elasticURL string, index string, batch string) (int, int, error)
 		}
 	}
 	log.WithField("created", createdCount).WithField("deleted", deletedCount).WithField("conflicted", conflictedCount).Debug("indexed batch")
+	UpdateContactsPerBatch("contacts_conflicted", conflictedCount) // contact processing metrics
 
 	return createdCount, deletedCount, nil
 }
@@ -265,7 +269,10 @@ func IndexContacts(db *sql.DB, elasticURL string, index string, lastModified tim
 	start := time.Now()
 
 	for {
+		startQuery := time.Now()
 		rows, err := db.Query(contactQuery, lastModified)
+		duration := time.Since(startQuery).Seconds()
+		ObserveDBResponseTime("contact_query", duration) // query duration metric
 
 		queryCreated := 0
 		queryCount := 0
@@ -313,6 +320,10 @@ func IndexContacts(db *sql.DB, elasticURL string, index string, lastModified tim
 				queryCreated += created
 				createdCount += created
 				deletedCount += deleted
+
+				// contact processing metrics
+				UpdateContactsPerBatch("contacts_created", created)
+				UpdateContactsPerBatch("contacts_deleted", deleted)
 			}
 		}
 
@@ -444,6 +455,7 @@ SELECT org_id, id, modified_on, is_active, row_to_json(t) FROM (
 `
 
 // settings and mappings for our index
+//
 //go:embed contacts/index_settings.json
 var indexSettings string
 
