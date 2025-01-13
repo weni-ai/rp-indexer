@@ -2,6 +2,7 @@ module github.com/nyaruka/rp-indexer
 
 require (
 	github.com/evalphobia/logrus_sentry v0.4.5
+	github.com/go-chi/chi v1.5.5
 	github.com/lib/pq v0.0.0-20180327071824-d34b9ff171c2
 	github.com/nyaruka/ezconf v0.2.1
 	github.com/nyaruka/gocommon v1.3.0
@@ -19,6 +20,7 @@ require (
 	github.com/fatih/structs v1.0.0 // indirect
 	github.com/getsentry/raven-go v0.0.0-20180405121644-d1470f50d3a3 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
+	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mailru/easyjson v0.7.6 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
