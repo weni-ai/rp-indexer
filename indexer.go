@@ -219,7 +219,7 @@ func IndexBatch(elasticURL string, index string, batch string) (int, int, error)
 	start := time.Now()
 	_, err := MakeJSONRequest(http.MethodPut, indexURL, batch, &response)
 	duration := time.Since(start).Seconds()
-	ObserveESIndexingTime("es_time", duration)
+	ObserveESIndexingTime("es_time", duration) // metric includes request time and additional operations from MakeJSONRequest().
 	if err != nil {
 		return 0, 0, err
 	}

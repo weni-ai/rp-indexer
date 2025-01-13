@@ -15,7 +15,7 @@ var summaryObjectives = map[float64]float64{
 var contactsProcessing = promauto.NewGaugeVec(
 	prometheus.GaugeOpts{
 		Name: "indexer_contacts_processing",
-		Help: "Number of contacts created / deleted / conflited per batch",
+		Help: "Number of contacts created / deleted / conflited per batch (500)",
 	},
 	[]string{"process"},
 )
@@ -35,17 +35,29 @@ var esIndexingTimeSummary = promauto.NewSummaryVec(
 		Help:       "Indexing time in Elasticsearch in seconds.",
 		Objectives: summaryObjectives,
 	},
-	[]string{"index"},
+	[]string{"operation"},
 )
 
-func UpdateContactsPerBatch(processName string, count int) {
-	contactsProcessing.WithLabelValues(processName).Set(float64(count))
+var elapsedTimeSinceIndexing = promauto.NewGaugeVec(
+	prometheus.GaugeOpts{
+		Name: "elapsed_time_since_indexing",
+		Help: "Total elapsed time of indexing (500k)",
+	},
+	[]string{"operation"},
+)
+
+func UpdateContactsPerBatch(process string, count int) {
+	contactsProcessing.WithLabelValues(process).Set(float64(count))
 }
 
 func ObserveDBResponseTime(operation string, duration float64) {
 	dbResponseTimeSummary.WithLabelValues(operation).Observe(duration)
 }
 
-func ObserveESIndexingTime(index string, duration float64) {
-	esIndexingTimeSummary.WithLabelValues(index).Observe(duration)
+func ObserveESIndexingTime(operation string, duration float64) {
+	esIndexingTimeSummary.WithLabelValues(operation).Observe(duration)
+}
+
+func ObserveElapsedIndexingTime(operation string, duration float64) {
+	esIndexingTimeSummary.WithLabelValues(operation).Observe(duration)
 }
