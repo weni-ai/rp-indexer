@@ -64,6 +64,8 @@ func main() {
 		log.Fatal(err)
 	}
 
+	go indexer.StartMetrics()
+
 	for {
 		// find our physical index
 		physicalIndexes := indexer.FindPhysicalIndexes(config.ElasticURL, config.Index)

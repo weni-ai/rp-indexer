@@ -247,7 +247,11 @@ func IndexBatch(elasticURL string, index string, batch string) (int, int, error)
 		}
 	}
 	log.WithField("created", createdCount).WithField("deleted", deletedCount).WithField("conflicted", conflictedCount).Debug("indexed batch")
-	UpdateContactsPerBatch("contacts_conflicted", conflictedCount) // contact processing metrics
+
+	// contact processing metrics
+	UpdateContactsPerBatch("contacts_conflicted", conflictedCount)
+	UpdateContactsPerBatch("contacts_created", createdCount)
+	UpdateContactsPerBatch("contacts_deleted", deletedCount)
 
 	return createdCount, deletedCount, nil
 }
@@ -320,10 +324,6 @@ func IndexContacts(db *sql.DB, elasticURL string, index string, lastModified tim
 				queryCreated += created
 				createdCount += created
 				deletedCount += deleted
-
-				// contact processing metrics
-				UpdateContactsPerBatch("contacts_created", created)
-				UpdateContactsPerBatch("contacts_deleted", deleted)
 			}
 		}
 
@@ -345,6 +345,7 @@ func IndexContacts(db *sql.DB, elasticURL string, index string, lastModified tim
 		}
 
 		elapsed := time.Since(start)
+		ObserveElapsedIndexingTime("time_elapsed", elapsed.Seconds())
 		rate := float32(processedCount) / (float32(elapsed) / float32(time.Second))
 		log.WithFields(map[string]interface{}{
 			"rate":    int(rate),
