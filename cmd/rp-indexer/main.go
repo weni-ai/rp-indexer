@@ -64,7 +64,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	go indexer.StartMetrics()
+	indexer.StartMetrics()
 
 	for {
 		// find our physical index
