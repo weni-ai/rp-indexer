@@ -2,7 +2,7 @@ module github.com/nyaruka/rp-indexer
 
 require (
 	github.com/evalphobia/logrus_sentry v0.4.5
-	github.com/lib/pq v0.0.0-20180327071824-d34b9ff171c2
+	github.com/lib/pq v1.10.9
 	github.com/nyaruka/ezconf v0.2.1
 	github.com/nyaruka/gocommon v1.3.0
 	github.com/olivere/elastic/v7 v7.0.22
