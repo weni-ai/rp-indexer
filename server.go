@@ -3,7 +3,6 @@ package indexer
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"sync"
 
 	"github.com/go-chi/chi"
@@ -11,7 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func StartMetrics() {
+func StartMetrics(metricsPort string) {
 	r := chi.NewRouter()
 
 	r.Handle("/metrics", promhttp.Handler())
@@ -19,8 +18,7 @@ func StartMetrics() {
 	waitGroup := &sync.WaitGroup{}
 	waitGroup.Add(1)
 
-	// Get metrics port from environment or use default
-	metricsPort := os.Getenv("METRICS_PORT")
+	// Fallback to default if still empty
 	if metricsPort == "" {
 		metricsPort = "8070"
 	}
