@@ -3,6 +3,7 @@ package indexer
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"sync"
 
 	"github.com/go-chi/chi"
@@ -18,17 +19,27 @@ func StartMetrics() {
 	waitGroup := &sync.WaitGroup{}
 	waitGroup.Add(1)
 
+	// Get metrics port from environment or use default
+	metricsPort := os.Getenv("METRICS_PORT")
+	if metricsPort == "" {
+		metricsPort = "8070"
+	}
+
 	// and start serving HTTP
 	go func() {
 		defer waitGroup.Done()
-		err := http.ListenAndServe(":8070", r)
+		addr := fmt.Sprintf(":%s", metricsPort)
+		log.Info(fmt.Sprintf("metrics server listening on %s", addr),
+			"comp", "server",
+			"state", "starting",
+		)
+
+		err := http.ListenAndServe(addr, r)
 		if err != nil && err != http.ErrServerClosed {
-			log.Error("failed to start server", "error", err, "comp", "server", "state", "stopping")
+			log.WithFields(log.Fields{
+				"error": err,
+				"port":  metricsPort,
+			}).Error("failed to start metrics server, metrics will not be available")
 		}
 	}()
-
-	log.Info(fmt.Sprintf("server listening on 8070"),
-		"comp", "server",
-		"state", "started",
-	)
 }

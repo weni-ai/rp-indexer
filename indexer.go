@@ -234,13 +234,17 @@ func IndexBatch(elasticURL string, index string, batch string) (int, int, error)
 				conflictedCount++
 			} else {
 				log.WithField("id", item.Index.ID).WithField("batch", batch).WithField("result", item.Index.Result).Error("error indexing contact")
+				IncrementIndexingErrors()
 			}
 		} else if item.Delete.ID != "" {
-			log.WithField("id", item.Index.ID).WithField("status", item.Index.Status).Debug("delete response")
+			log.WithField("id", item.Delete.ID).WithField("status", item.Delete.Status).Debug("delete response")
 			if item.Delete.Status == 200 {
 				deletedCount++
 			} else if item.Delete.Status == 409 {
 				conflictedCount++
+			} else {
+				log.WithField("id", item.Delete.ID).Error("error deleting contact")
+				IncrementIndexingErrors()
 			}
 		} else {
 			log.Error("unparsed item in response")
@@ -252,6 +256,11 @@ func IndexBatch(elasticURL string, index string, batch string) (int, int, error)
 	UpdateContactsPerBatch("contacts_conflicted", conflictedCount)
 	UpdateContactsPerBatch("contacts_created", createdCount)
 	UpdateContactsPerBatch("contacts_deleted", deletedCount)
+
+	// Update total metrics
+	IncrementTotalContacts("contacts_created", createdCount)
+	IncrementTotalContacts("contacts_deleted", deletedCount)
+	IncrementTotalContacts("contacts_conflicted", conflictedCount)
 
 	return createdCount, deletedCount, nil
 }
@@ -307,6 +316,10 @@ func IndexContacts(db *sql.DB, elasticURL string, index string, lastModified tim
 				batch.WriteString("\n")
 				batch.WriteString(contactJSON)
 				batch.WriteString("\n")
+
+				// Calculate latency between modification and indexing
+				latency := time.Since(modifiedOn).Seconds()
+				ObserveIndexingLatency(latency)
 			} else {
 				log.WithField("id", id).WithField("modifiedOn", modifiedOn).Debug("deleted contact")
 				batch.WriteString(fmt.Sprintf(deleteCommand, id, modifiedOn.UnixNano(), orgID))

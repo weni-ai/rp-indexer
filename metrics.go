@@ -46,6 +46,30 @@ var elapsedTimeSinceIndexing = promauto.NewGaugeVec(
 	[]string{"operation"},
 )
 
+// New metrics below
+var totalContactsProcessed = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "indexer_total_contacts_processed",
+		Help: "Total number of contacts processed since start",
+	},
+	[]string{"process"},
+)
+
+var indexingErrors = promauto.NewCounter(
+	prometheus.CounterOpts{
+		Name: "indexer_errors_total",
+		Help: "Total number of errors encountered during indexing",
+	},
+)
+
+var indexingLatency = promauto.NewHistogram(
+	prometheus.HistogramOpts{
+		Name:    "indexer_contact_latency_seconds",
+		Help:    "Time between contact modification and successful indexing",
+		Buckets: prometheus.ExponentialBuckets(0.1, 2, 10), // From 0.1s to ~102s
+	},
+)
+
 func UpdateContactsPerBatch(process string, count int) {
 	contactsProcessing.WithLabelValues(process).Set(float64(count))
 }
@@ -59,5 +83,18 @@ func ObserveESIndexingTime(operation string, duration float64) {
 }
 
 func ObserveElapsedIndexingTime(operation string, duration float64) {
-	esIndexingTimeSummary.WithLabelValues(operation).Observe(duration)
+	elapsedTimeSinceIndexing.WithLabelValues(operation).Set(duration)
+}
+
+// New functions for the new metrics
+func IncrementTotalContacts(process string, count int) {
+	totalContactsProcessed.WithLabelValues(process).Add(float64(count))
+}
+
+func IncrementIndexingErrors() {
+	indexingErrors.Inc()
+}
+
+func ObserveIndexingLatency(duration float64) {
+	indexingLatency.Observe(duration)
 }
