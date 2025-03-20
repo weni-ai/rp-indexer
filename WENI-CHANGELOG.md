@@ -1,3 +1,7 @@
+1.1.0
+----------
+ * Add comprehensive metrics for contact indexing performance and error tracking
+
 1.0.1
 ----------
  * Update postgres pq package version to github.com/lib/pq v1.10.9
