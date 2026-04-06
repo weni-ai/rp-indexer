@@ -19,6 +19,7 @@ type config struct {
 	Poll        int    `help:"the number of seconds to wait between checking for updated contacts"`
 	Rebuild     bool   `help:"whether to rebuild the index, swapping it when complete, then exiting (default false)"`
 	Cleanup     bool   `help:"whether to remove old indexes after a rebuild"`
+	OrgID       int64  `help:"if set, reindex only contacts belonging to this org ID, then exit"`
 	LogLevel    string `help:"the log level, one of error, warn, info, debug"`
 	SentryDSN   string `help:"the sentry configuration to log errors to, if any"`
 	MetricsPort string `help:"the port to serve prometheus metrics on"`
@@ -68,6 +69,25 @@ func main() {
 
 	indexer.StartMetrics(config.MetricsPort)
 
+	// org-specific reindex mode: reindex all contacts for a single org and exit
+	if config.OrgID > 0 {
+		physicalIndexes := indexer.FindPhysicalIndexes(config.ElasticURL, config.Index)
+		if len(physicalIndexes) == 0 {
+			log.Fatal("no physical index found; run without --org to create one first")
+		}
+		physicalIndex := physicalIndexes[0]
+
+		start := time.Now()
+		log.WithField("org_id", config.OrgID).WithField("index", physicalIndex).Info("reindexing contacts for org")
+
+		indexed, deleted, err := indexer.IndexContacts(db, config.ElasticURL, physicalIndex, time.Time{}, config.OrgID)
+		if err != nil {
+			log.WithError(err).Fatal("error reindexing contacts for org")
+		}
+		log.WithField("added", indexed).WithField("deleted", deleted).WithField("org_id", config.OrgID).WithField("elapsed", time.Since(start)).Info("completed org reindex")
+		os.Exit(0)
+	}
+
 	for {
 		// find our physical index
 		physicalIndexes := indexer.FindPhysicalIndexes(config.ElasticURL, config.Index)
@@ -102,12 +122,12 @@ func main() {
 		log.WithField("last_modified", lastModified).WithField("index", physicalIndex).Info("indexing contacts newer than last modified")
 
 		// now index our docs
-		indexed, deleted, err := indexer.IndexContacts(db, config.ElasticURL, physicalIndex, lastModified.Add(-5*time.Second))
+		indexed, deleted, err := indexer.IndexContacts(db, config.ElasticURL, physicalIndex, lastModified.Add(-5*time.Second), 0)
 		if err != nil {
 			logError(config.Rebuild, err, "error indexing contacts")
 			continue
 		}
-		log.WithField("added", indexed).WithField("deleted", deleted).WithField("index", physicalIndex).WithField("elapsed", time.Now().Sub(start)).Info("completed indexing")
+		log.WithField("added", indexed).WithField("deleted", deleted).WithField("index", physicalIndex).WithField("elapsed", time.Since(start)).Info("completed indexing")
 
 		// if the index didn't previously exist or we are rebuilding, remap to our alias
 		if remapAlias {
