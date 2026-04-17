@@ -65,7 +65,7 @@ func TestIndexing(t *testing.T) {
 	physicalName, err := CreateNewIndex(elasticURL, indexName)
 	assert.NoError(t, err)
 
-	added, deleted, err := IndexContacts(db, elasticURL, physicalName, time.Time{})
+	added, deleted, err := IndexContacts(db, elasticURL, physicalName, time.Time{}, 0)
 	assert.NoError(t, err)
 	assert.Equal(t, 9, added)
 	assert.Equal(t, 0, deleted)
@@ -253,7 +253,7 @@ func TestIndexing(t *testing.T) {
 	newIndex, err := CreateNewIndex(elasticURL, indexName)
 	assert.NoError(t, err)
 
-	added, deleted, err = IndexContacts(db, elasticURL, newIndex, time.Time{})
+	added, deleted, err = IndexContacts(db, elasticURL, newIndex, time.Time{}, 0)
 	assert.NoError(t, err)
 	assert.Equal(t, 9, added)
 	assert.Equal(t, 0, deleted)
@@ -286,7 +286,7 @@ func TestIndexing(t *testing.T) {
 	_, err = db.Exec(string(dbUpdate))
 	assert.NoError(t, err)
 
-	added, deleted, err = IndexContacts(db, elasticURL, indexName, lastModified)
+	added, deleted, err = IndexContacts(db, elasticURL, indexName, lastModified, 0)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, added)
 	assert.Equal(t, 1, deleted)
