@@ -1,3 +1,7 @@
+1.2.0
+----------
+ * feat: index CTWA campaign source ids on contact documents for ctwa_source_id search
+
 1.1.0
 ----------
  * Add comprehensive metrics for contact indexing performance and error tracking

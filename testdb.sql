@@ -137,7 +137,9 @@ INSERT INTO contacts_contacturn(id, contact_id, scheme, org_id, priority, path, 
 (8, 7, 'viber', 2, 90, 'viberpath==', NULL, 'viber:viberpath=='),
 (9, 8, 'facebook', 2, 90, 1000001, 'funguy', 'facebook:1000001'),
 (10, 9, 'twitterid', 2, 90, 1000001, 'fungal', 'twitterid:1000001'),
-(11, 10, 'whatsapp',  2, 90, 1000003, NULL, 'whatsapp:1000003');
+(11, 10, 'whatsapp',  2, 90, 1000003, NULL, 'whatsapp:1000003'),
+(12, 1, 'whatsapp', 1, 50, '5511999991111', NULL, 'whatsapp:5511999991111'),
+(13, 4, 'whatsapp', 1, 50, '5511888888888', NULL, 'whatsapp:5511888888888');
 
 INSERT INTO contacts_contactgroup(id, uuid, name) VALUES
 (1, '4ea0f313-2f62-4e57-bdf0-232b5191dd57', 'Group 1'),
@@ -149,3 +151,45 @@ INSERT INTO contacts_contactgroup_contacts(id, contact_id, contactgroup_id) VALU
 (1, 1, 1),
 (2, 1, 4),
 (3, 2, 4);
+
+DROP TABLE IF EXISTS conversion_events_ctwa CASCADE;
+DROP TABLE IF EXISTS ctwa_referral_sources CASCADE;
+CREATE TABLE ctwa_referral_sources (
+    id bigserial primary key,
+    org_id integer NOT NULL,
+    source_id character varying(64) NOT NULL,
+    source_type character varying(16) NOT NULL,
+    source_url text NULL,
+    headline text NULL,
+    body text NULL,
+    first_seen_at timestamp with time zone NOT NULL,
+    last_seen_at timestamp with time zone NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL
+);
+
+CREATE TABLE conversion_events_ctwa (
+    id bigserial primary key,
+    ctwa_clid character varying(512) NULL,
+    contact_urn character varying(255) NOT NULL,
+    timestamp timestamp with time zone NOT NULL,
+    channel_uuid character varying(36) NOT NULL,
+    waba character varying(255) NOT NULL,
+    phone_number_id character varying(64) NULL,
+    referral_source_id bigint NOT NULL,
+    message_id character varying(255) NULL,
+    created_at timestamp with time zone NOT NULL
+);
+
+INSERT INTO ctwa_referral_sources(id, org_id, source_id, source_type, first_seen_at, last_seen_at, created_at, updated_at) VALUES
+(1, 1, 'campaign-a', 'ad', '2020-08-01 00:00:00+00', '2020-08-01 00:00:00+00', '2020-08-01 00:00:00+00', '2020-08-01 00:00:00+00'),
+(2, 1, 'campaign-b', 'ad', '2020-08-01 00:00:00+00', '2020-08-01 00:00:00+00', '2020-08-01 00:00:00+00', '2020-08-01 00:00:00+00'),
+(3, 1, 'legacy', 'ad', '2020-08-01 00:00:00+00', '2020-08-01 00:00:00+00', '2020-08-01 00:00:00+00', '2020-08-01 00:00:00+00'),
+(4, 1, '   ', 'ad', '2020-08-01 00:00:00+00', '2020-08-01 00:00:00+00', '2020-08-01 00:00:00+00', '2020-08-01 00:00:00+00');
+
+INSERT INTO conversion_events_ctwa(ctwa_clid, contact_urn, timestamp, channel_uuid, waba, referral_source_id, created_at) VALUES
+('clid-1a', 'whatsapp:5511999991111', '2020-08-01 00:00:00+00', '11111111-1111-1111-1111-111111111111', 'waba', 1, '2020-08-01 00:00:00+00'),
+('clid-1b', 'whatsapp:5511999991111', '2020-08-02 00:00:00+00', '11111111-1111-1111-1111-111111111111', 'waba', 2, '2020-08-02 00:00:00+00'),
+('clid-4a', 'whatsapp:5511888888888', '2020-08-01 00:00:00+00', '11111111-1111-1111-1111-111111111111', 'waba', 1, '2020-08-01 00:00:00+00'),
+('clid-2-legacy', 'tel:+12067794444', '2020-08-01 00:00:00+00', '11111111-1111-1111-1111-111111111111', 'waba', 3, '2020-08-01 00:00:00+00'),
+('clid-2-blank', 'tel:+12067794444', '2020-08-01 00:00:00+00', '11111111-1111-1111-1111-111111111111', 'waba', 4, '2020-08-01 00:00:00+00');
