@@ -144,6 +144,9 @@
                 "groups": {
                     "type": "keyword"
                 },
+                "ctwa_source_ids": {
+                    "type": "keyword"
+                },
                 "uuid": {
                     "type": "keyword"
                 },
