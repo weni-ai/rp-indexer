@@ -1,6 +1,7 @@
 1.2.0
 ----------
  * feat: index CTWA campaign source ids on contact documents for ctwa_source_id search
+ * fix: update CI GitHub Actions so Go 1.23 still installs on current runners
 
 1.1.0
 ----------
