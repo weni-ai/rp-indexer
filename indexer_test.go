@@ -141,6 +141,11 @@ func TestIndexing(t *testing.T) {
 		elastic.NewMatchPhraseQuery("urns.path", "222")))
 	assertQuery(t, client, physicalName, query, []int64{1})
 
+	assertQuery(t, client, physicalName, elastic.NewTermQuery("ctwa_source_ids", "campaign-a"), []int64{1, 4})
+	assertQuery(t, client, physicalName, elastic.NewTermQuery("ctwa_source_ids", "campaign-b"), []int64{1})
+	assertQuery(t, client, physicalName, elastic.NewTermQuery("ctwa_source_ids", "legacy"), []int64{})
+	assertQuery(t, client, physicalName, elastic.NewExistsQuery("ctwa_source_ids"), []int64{1, 4})
+
 	// text query
 	query = elastic.NewNestedQuery("fields", elastic.NewBoolQuery().Must(
 		elastic.NewMatchQuery("fields.field", "17103bb1-1b48-4b70-92f7-1f6b73bd3488"),

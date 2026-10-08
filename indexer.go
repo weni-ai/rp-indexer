@@ -460,7 +460,17 @@ SELECT org_id, id, modified_on, is_active, row_to_json(t) FROM (
             WHERE contact_id = contacts_contact.id AND
                   contacts_contactgroup_contacts.contactgroup_id = contacts_contactgroup.id
           ) g
-   ) as groups
+   ) as groups,
+   (
+     SELECT array_to_json(array_agg(DISTINCT src.source_id))
+     FROM conversion_events_ctwa ev
+     JOIN ctwa_referral_sources src ON src.id = ev.referral_source_id
+     JOIN contacts_contacturn urn ON urn.contact_id = contacts_contact.id
+       AND urn.identity = ev.contact_urn
+     WHERE src.source_id IS NOT NULL
+       AND btrim(src.source_id) <> ''
+       AND src.source_id <> 'legacy'
+   ) as ctwa_source_ids
   FROM contacts_contact
   WHERE modified_on >= $1
   ORDER BY modified_on ASC
