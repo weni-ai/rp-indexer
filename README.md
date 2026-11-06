@@ -25,6 +25,11 @@ all contacts on RapidPro. Once complete, this switches out the alias for the con
 with the newly build index. This can be run on a cron (in parallel with the mode above) to rebuild
 your index occasionally to get rid of bloat.
 
+For a **staged rebuild**, use `--rebuild` together with `--rebuild-skip-alias-swap` (or `INDEXER_REBUILD_SKIP_ALIAS_SWAP=true`).
+The indexer creates and fills a new physical index (for example `contacts_2025_11_06`) but does **not** repoint the `contacts` alias.
+After your team validates counts and queries against that index, promote it manually with Elasticsearch (`POST /_aliases`).
+Do not combine this with `--cleanup` until after promotion—the cleanup logic runs against the alias and is skipped when this flag is set.
+
 # Configuration
 
 Indexer uses a tiered configuration system, each option takes precendence over the ones above it:
@@ -93,8 +98,12 @@ Usage of indexer:
     	the number of seconds to wait between checking for updated contacts (default 5)
   -rebuild
     	whether to rebuild the index, swapping it when complete, then exiting (default false)
+  -rebuild-skip-alias-swap
+    	with rebuild, write to the new physical index only; do not remap the alias (promote manually after validation)
   -sentry-dsn string
     	the sentry configuration to log errors to, if any
+  -metrics-port string
+    	the port to serve prometheus metrics on (default 8070)
 
 Environment variables:
                              INDEXER_CLEANUP - bool
@@ -102,7 +111,9 @@ Environment variables:
                          INDEXER_ELASTIC_URL - string
                                INDEXER_INDEX - string
                            INDEXER_LOG_LEVEL - string
+                        INDEXER_METRICS_PORT - string
                                 INDEXER_POLL - int
                              INDEXER_REBUILD - bool
+             INDEXER_REBUILD_SKIP_ALIAS_SWAP - bool
                           INDEXER_SENTRY_DSN - string
                           ```

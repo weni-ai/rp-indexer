@@ -13,27 +13,29 @@ import (
 )
 
 type config struct {
-	ElasticURL  string `help:"the url for our elastic search instance"`
-	DB          string `help:"the connection string for our database"`
-	Index       string `help:"the alias for our contact index"`
-	Poll        int    `help:"the number of seconds to wait between checking for updated contacts"`
-	Rebuild     bool   `help:"whether to rebuild the index, swapping it when complete, then exiting (default false)"`
-	Cleanup     bool   `help:"whether to remove old indexes after a rebuild"`
-	LogLevel    string `help:"the log level, one of error, warn, info, debug"`
-	SentryDSN   string `help:"the sentry configuration to log errors to, if any"`
-	MetricsPort string `help:"the port to serve prometheus metrics on"`
+	ElasticURL           string `help:"the url for our elastic search instance"`
+	DB                   string `help:"the connection string for our database"`
+	Index                string `help:"the alias for our contact index"`
+	Poll                 int    `help:"the number of seconds to wait between checking for updated contacts"`
+	Rebuild              bool   `help:"whether to rebuild the index, swapping it when complete, then exiting (default false)"`
+	RebuildSkipAliasSwap bool   `help:"with rebuild, write to the new physical index only; do not remap the alias (promote manually after validation)"`
+	Cleanup              bool   `help:"whether to remove old indexes after a rebuild"`
+	LogLevel             string `help:"the log level, one of error, warn, info, debug"`
+	SentryDSN            string `help:"the sentry configuration to log errors to, if any"`
+	MetricsPort          string `help:"the port to serve prometheus metrics on"`
 }
 
 func main() {
 	config := config{
-		ElasticURL:  "http://localhost:9200",
-		DB:          "postgres://localhost/temba?sslmode=disable",
-		Index:       "contacts",
-		Poll:        5,
-		Rebuild:     false,
-		Cleanup:     false,
-		LogLevel:    "info",
-		MetricsPort: "8070",
+		ElasticURL:           "http://localhost:9200",
+		DB:                   "postgres://localhost/temba?sslmode=disable",
+		Index:                "contacts",
+		Poll:                 5,
+		Rebuild:              false,
+		RebuildSkipAliasSwap: false,
+		Cleanup:              false,
+		LogLevel:             "info",
+		MetricsPort:          "8070",
 	}
 	loader := ezconf.NewLoader(&config, "indexer", "Indexes RapidPro contacts to ElasticSearch", []string{"indexer.toml"})
 	loader.MustLoad()
@@ -111,16 +113,25 @@ func main() {
 
 		// if the index didn't previously exist or we are rebuilding, remap to our alias
 		if remapAlias {
-			err := indexer.MapIndexAlias(config.ElasticURL, config.Index, physicalIndex)
-			if err != nil {
-				logError(config.Rebuild, err, "error remapping alias")
-				continue
+			if config.Rebuild && config.RebuildSkipAliasSwap {
+				log.WithField("alias", config.Index).
+					WithField("physicalIndex", physicalIndex).
+					Warn("rebuild finished without alias swap; promote this physical index when validated (POST /_aliases)")
+				remapAlias = false
+			} else {
+				err := indexer.MapIndexAlias(config.ElasticURL, config.Index, physicalIndex)
+				if err != nil {
+					logError(config.Rebuild, err, "error remapping alias")
+					continue
+				}
+				remapAlias = false
 			}
-			remapAlias = false
 		}
 
 		// cleanup our aliases if appropriate
-		if config.Cleanup {
+		if config.Cleanup && config.Rebuild && config.RebuildSkipAliasSwap {
+			log.Warn("cleanup skipped: use rebuild-skip-alias-swap without -cleanup, then cleanup after manual alias promotion")
+		} else if config.Cleanup {
 			err := indexer.CleanupIndexes(config.ElasticURL, config.Index)
 			if err != nil {
 				logError(config.Rebuild, err, "error cleaning up aliases")

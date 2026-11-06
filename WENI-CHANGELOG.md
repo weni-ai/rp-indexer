@@ -1,3 +1,7 @@
+Unreleased
+----------
+ * feat: `-rebuild-skip-alias-swap` / `INDEXER_REBUILD_SKIP_ALIAS_SWAP` — rebuild into a new physical index without repointing the production alias until manual promotion
+
 1.2.0
 ----------
  * feat: index CTWA campaign source ids on contact documents for ctwa_source_id search
